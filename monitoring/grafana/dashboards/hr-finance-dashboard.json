@@ -1,0 +1,182 @@
+{
+    "dashboard": {
+      "id": null,
+      "title": "HR Finance Chatbot Dashboard",
+      "tags": ["hr-finance", "chatbot", "ai"],
+      "style": "dark",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "API Request Rate",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(http_requests_total{job=\"hr-finance-chatbot\"}[5m])",
+              "legendFormat": "{{method}} {{endpoint}}"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "Requests/sec"
+            }
+          ],
+          "xAxis": {
+            "show": true
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "title": "Response Time",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"hr-finance-chatbot\"}[5m]))",
+              "legendFormat": "95th percentile"
+            },
+            {
+              "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"hr-finance-chatbot\"}[5m]))",
+              "legendFormat": "Median"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "Seconds"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "title": "Model Inference Time",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "rate(model_inference_duration_seconds_sum{job=\"hr-finance-chatbot\"}[5m]) / rate(model_inference_duration_seconds_count{job=\"hr-finance-chatbot\"}[5m])",
+              "legendFormat": "{{model_name}}"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "Seconds"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "title": "Memory Usage",
+          "type": "graph",
+          "targets": [
+            {
+              "expr": "process_resident_memory_bytes{job=\"hr-finance-chatbot\"} / 1024 / 1024",
+              "legendFormat": "RSS Memory (MB)"
+            }
+          ],
+          "yAxes": [
+            {
+              "label": "MB"
+            }
+          ],
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        },
+        {
+          "id": 5,
+          "title": "Error Rate",
+          "type": "singlestat",
+          "targets": [
+            {
+              "expr": "rate(http_requests_total{job=\"hr-finance-chatbot\",status=~\"5..\"}[5m]) / rate(http_requests_total{job=\"hr-finance-chatbot\"}[5m]) * 100"
+            }
+          ],
+          "format": "percent",
+          "thresholds": "1,5",
+          "colorBackground": true,
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 16
+          }
+        },
+        {
+          "id": 6,
+          "title": "Active Users",
+          "type": "singlestat",
+          "targets": [
+            {
+              "expr": "count(count by (user_id) (rate(http_requests_total{job=\"hr-finance-chatbot\"}[5m])))"
+            }
+          ],
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 16
+          }
+        }
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "refresh": "30s"
+    }
+  }
+  
+  ---
+  # monitoring/alertmanager.yml
+  global:
+    smtp_smarthost: 'localhost:587'
+    smtp_from: 'alertmanager@company.com'
+  
+  route:
+    group_by: ['alertname']
+    group_wait: 10s
+    group_interval: 10s
+    repeat_interval: 1h
+    receiver: 'web.hook'
+  
+  receivers:
+    - name: 'web.hook'
+      email_configs:
+        - to: 'admin@company.com'
+          subject: 'HR Finance Chatbot Alert'
+          body: |
+            {{ range .Alerts }}
+            Alert: {{ .Annotations.summary }}
+            Description: {{ .Annotations.description }}
+            {{ end }}
+      slack_configs:
+        - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+          channel: '#alerts'
+          title: 'HR Finance Chatbot Alert'
+          text: '{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}'
+  
+  inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance']

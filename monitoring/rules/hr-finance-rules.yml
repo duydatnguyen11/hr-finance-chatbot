@@ -1,0 +1,65 @@
+groups:
+  - name: hr-finance-chatbot
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{job="hr-finance-chatbot",status=~"5.."}[5m]) / rate(http_requests_total{job="hr-finance-chatbot"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="hr-finance-chatbot"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s"
+
+      - alert: ModelInferenceSlowdown
+        expr: rate(model_inference_duration_seconds_sum{job="hr-finance-chatbot"}[5m]) / rate(model_inference_duration_seconds_count{job="hr-finance-chatbot"}[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Model inference is slow"
+          description: "Average inference time is {{ $value }}s"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes{job="hr-finance-chatbot"} / 1024 / 1024 / 1024 > 8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}GB"
+
+      - alert: DatabaseConnectionFailure
+        expr: up{job="postgres-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failure"
+          description: "PostgreSQL database is not responding"
+
+      - alert: RedisConnectionFailure
+        expr: up{job="redis-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection failure"
+          description: "Redis cache is not responding"
+
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space usage is above 90%"
