@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hr-finance-chatbot-service
+  namespace: hr-finance-chatbot
+  labels:
+    app: hr-finance-chatbot
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  - port: 9000
+    targetPort: 9000
+    protocol: TCP
+    name: metrics
+  selector:
+    app: hr-finance-chatbot

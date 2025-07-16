@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hr-finance-chatbot
+  labels:
+    name: hr-finance-chatbot
+    environment: production
