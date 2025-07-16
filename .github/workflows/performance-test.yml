@@ -1,0 +1,60 @@
+name: Performance Testing
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Daily at 2 AM
+  workflow_dispatch:
+
+jobs:
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_USER: postgres
+          POSTGRES_DB: hrfinance_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+          
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install locust
+        
+    - name: Start application
+      run: |
+        python main.py --mode api &
+        sleep 30
+        
+    - name: Run performance tests
+      run: |
+        locust -f tests/performance/locustfile.py \
+          --host=http://localhost:8000 \
+          --users=50 \
+          --spawn-rate=10 \
+          --run-time=5m \
+          --headless \
+          --html=performance-report.html
+          
+    - name: Upload performance report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report
+        path: performance-report.html
