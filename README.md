@@ -312,5 +312,3 @@ For support, please:
 - [ ] Multi-tenant support
 
 ---
-
-**Made with ❤️ by Your Team**
